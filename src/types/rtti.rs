@@ -19,16 +19,16 @@ pub type FunctionHandler<C, R> = extern "C" fn(&C, &mut StackFrame, R, i64);
 /// An RTTI representation of a type.
 #[derive(Debug)]
 #[repr(transparent)]
-pub struct Type(red::CBaseRTTIType);
+pub struct Type(red::rtti::IType);
 
 impl Type {
     #[inline]
-    pub(crate) fn as_raw(&self) -> &red::CBaseRTTIType {
+    pub(crate) fn as_raw(&self) -> &red::rtti::IType {
         &self.0
     }
 
     #[inline]
-    pub(crate) unsafe fn from_raw<'a>(raw: *const red::CBaseRTTIType) -> Option<&'a Self> {
+    pub(crate) unsafe fn from_raw<'a>(raw: *const red::rtti::IType) -> Option<&'a Self> {
         unsafe { raw.cast::<Self>().as_ref() }
     }
 
@@ -54,33 +54,33 @@ impl Type {
                 return CName::undefined();
             }
         }
-        CName::from_raw(unsafe { (self.vft().tail.CBaseRTTIType_GetName)(&self.0) })
+        CName::from_raw(unsafe { (self.vft().tail.IType_GetName)(&self.0) })
     }
 
     #[inline]
     pub fn size(&self) -> u32 {
-        unsafe { (self.vft().tail.CBaseRTTIType_GetSize)(&self.0) }
+        unsafe { (self.vft().tail.IType_GetSize)(&self.0) }
     }
 
     #[inline]
     pub fn alignment(&self) -> u32 {
-        unsafe { (self.vft().tail.CBaseRTTIType_GetAlignment)(&self.0) }
+        unsafe { (self.vft().tail.IType_GetAlignment)(&self.0) }
     }
 
     #[inline]
     pub fn kind(&self) -> TypeKind {
-        unsafe { mem::transmute((self.vft().tail.CBaseRTTIType_GetType)(&self.0)) }
+        unsafe { mem::transmute((self.vft().tail.IType_GetType)(&self.0)) }
     }
 
     #[inline]
     pub fn allocator(&self) -> &IAllocator {
-        unsafe { &*((self.vft().tail.CBaseRTTIType_GetAllocator)(&self.0).cast::<IAllocator>()) }
+        unsafe { &*((self.vft().tail.IType_GetAllocator)(&self.0).cast::<IAllocator>()) }
     }
 
     #[inline]
     pub fn as_class(&self) -> Option<&Class> {
         if self.kind().is_class() {
-            Some(unsafe { mem::transmute::<&red::CBaseRTTIType, &Class>(&self.0) })
+            Some(unsafe { mem::transmute::<&red::rtti::IType, &Class>(&self.0) })
         } else {
             None
         }
@@ -89,7 +89,7 @@ impl Type {
     #[inline]
     pub fn as_class_mut(&mut self) -> Option<&mut Class> {
         if self.kind().is_class() {
-            Some(unsafe { mem::transmute::<&mut red::CBaseRTTIType, &mut Class>(&mut self.0) })
+            Some(unsafe { mem::transmute::<&mut red::rtti::IType, &mut Class>(&mut self.0) })
         } else {
             None
         }
@@ -98,7 +98,7 @@ impl Type {
     #[inline]
     pub fn as_array(&self) -> Option<&ArrayType> {
         if self.kind().is_array() {
-            Some(unsafe { mem::transmute::<&red::CBaseRTTIType, &ArrayType>(&self.0) })
+            Some(unsafe { mem::transmute::<&red::rtti::IType, &ArrayType>(&self.0) })
         } else {
             None
         }
@@ -130,7 +130,7 @@ impl Type {
     pub unsafe fn to_string(&self, value: ValuePtr) -> RedString {
         let mut str = RedString::new();
         unsafe {
-            (self.vft().tail.CBaseRTTIType_ToString)(
+            (self.vft().tail.IType_ToString)(
                 &self.0,
                 value.0,
                 &mut str as *mut _ as *mut red::CString,
@@ -149,23 +149,23 @@ impl Type {
 #[derive(Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum TypeKind {
-    Name = red::ERTTIType::Name,
-    Fundamental = red::ERTTIType::Fundamental,
-    Class = red::ERTTIType::Class,
-    Array = red::ERTTIType::Array,
-    Simple = red::ERTTIType::Simple,
-    Enum = red::ERTTIType::Enum,
-    StaticArray = red::ERTTIType::StaticArray,
-    NativeArray = red::ERTTIType::NativeArray,
-    Pointer = red::ERTTIType::Pointer,
-    Ref = red::ERTTIType::Handle,
-    WeakRef = red::ERTTIType::WeakHandle,
-    ResourceRef = red::ERTTIType::ResourceReference,
-    RaRef = red::ERTTIType::ResourceAsyncReference,
-    BitField = red::ERTTIType::BitField,
-    Curve = red::ERTTIType::LegacySingleChannelCurve,
-    ScriptRef = red::ERTTIType::ScriptReference,
-    FixedArray = red::ERTTIType::FixedArray,
+    Name = red::rtti::ERTTIType::Name,
+    Fundamental = red::rtti::ERTTIType::Fundamental,
+    Class = red::rtti::ERTTIType::Class,
+    Array = red::rtti::ERTTIType::Array,
+    Simple = red::rtti::ERTTIType::Simple,
+    Enum = red::rtti::ERTTIType::Enum,
+    StaticArray = red::rtti::ERTTIType::StaticArray,
+    NativeArray = red::rtti::ERTTIType::NativeArray,
+    Pointer = red::rtti::ERTTIType::Pointer,
+    Ref = red::rtti::ERTTIType::Handle,
+    WeakRef = red::rtti::ERTTIType::WeakHandle,
+    ResourceRef = red::rtti::ERTTIType::ResourceReference,
+    RaRef = red::rtti::ERTTIType::ResourceAsyncReference,
+    BitField = red::rtti::ERTTIType::BitField,
+    Curve = red::rtti::ERTTIType::LegacySingleChannelCurve,
+    ScriptRef = red::rtti::ERTTIType::ScriptReference,
+    FixedArray = red::rtti::ERTTIType::FixedArray,
 }
 
 impl TypeKind {
@@ -1276,7 +1276,7 @@ impl Property {
         unsafe {
             (*ptr).0.name = name.to_raw();
             (*ptr).0.group = group.to_raw();
-            (*ptr).0.type_ = type_.as_raw() as *const _ as *mut red::CBaseRTTIType;
+            (*ptr).0.type_ = type_.as_raw() as *const _ as *mut red::rtti::IType;
             (*ptr).0.parent = parent.as_raw() as *const _ as *mut red::CClass;
             (*ptr).0.valueOffset = offset;
             prop.assume_init()
@@ -1645,12 +1645,12 @@ struct TypeVft {
     /// Windows (MSVC): the scalar deleting destructor. macOS (Itanium): D1, the complete object destructor, which destroys in place.
     destroy: unsafe extern "C" fn(this: *mut Type),
     /// macOS: D0, the deleting destructor, has its own slot right after D1, so everything after it is 8 bytes higher.
-    /// bindgen leaves the destructor out of `CBaseRTTIType__bindgen_vtable`, which therefore starts at GetName.
+    /// bindgen leaves the destructor out of `IType__bindgen_vtable`, which therefore starts at GetName.
     /// Evidence: Mac CClass vtable (RVA 0x7001020): slot 0x00 `b 0x219721c` (D1), slot 0x08 `bl 0x219721c; b 0x4a3dbf4` (D0 = delete),
     /// slot 0x10 `ldr x0,[x0,#0x18]; ret` (GetName), slot 0x28 `mov w0,#2; ret` (GetType == Class).
     #[cfg(target_os = "macos")]
     _destroy_deleting: unsafe extern "C" fn(this: *mut Type),
-    tail: red::CBaseRTTIType__bindgen_vtable,
+    tail: red::rtti::IType__bindgen_vtable,
 }
 
 #[repr(C)]
